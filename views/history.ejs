@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>History - Arina Monitor</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+    *::-webkit-scrollbar { width: 6px; height: 6px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 3px; }
+    .sidebar-link.active { background: linear-gradient(90deg, rgba(59,130,246,0.15) 0%, transparent 100%); border-left-color: #3b82f6; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased flex flex-col lg:flex-row min-h-screen">
+  <!-- Mobile Top Bar -->
+  <header class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+    <button class="p-2 -ml-2 rounded-lg hover:bg-slate-800 transition-colors" onclick="toggleSidebar()">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        </svg>
+      </div>
+      <span class="font-semibold">Arina Monitor</span>
+    </div>
+    <div class="w-10"></div>
+  </header>
+
+  <!-- Mobile Sidebar Overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col transform -translate-x-full lg:translate-x-0 lg:block transition-transform duration-300 border-r border-slate-700">
+    <div class="p-5 border-b border-slate-700/50">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-semibold text-lg">Arina Monitor</h1>
+          <p class="text-xs text-slate-400">Heartbeat System</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+      <a href="/" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+        </svg>
+        <span class="font-medium">Dashboard</span>
+      </a>
+      <a href="/history" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="font-medium">History</span>
+      </a>
+      <a href="/settings" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+        <span class="font-medium">Settings</span>
+      </a>
+    </nav>
+
+    <div class="p-4 border-t border-slate-700/50">
+      <div class="flex items-center gap-2 text-sm text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>System Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex flex-col min-h-screen">
+    <!-- Desktop Header -->
+    <header class="hidden lg:flex bg-white border-b border-gray-200 px-6 py-4 items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">History</h2>
+        <p class="text-sm text-gray-500">View all status change events</p>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-semibold">
+        A
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
+      <div class="bg-white rounded-xl lg:rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in">
+        <div class="px-4 lg:px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-gray-900">Event History</h3>
+          <p class="text-sm text-gray-500 hidden sm:block">Chronological log of all status changes</p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50/50">
+              <tr>
+                <th class="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Monitor</th>
+                <th class="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Message</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <% if (logs.length === 0) { %>
+              <tr>
+                <td colspan="4" class="px-4 lg:px-6 py-12 text-center">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </div>
+                    <p class="text-gray-500 font-medium">No events recorded yet</p>
+                    <p class="text-gray-400 text-sm">Status changes will appear here</p>
+                  </div>
+                </td>
+              </tr>
+              <% } else { %>
+              <% logs.forEach(function(log) { %>
+              <tr class="hover:bg-gray-50/50 transition-colors duration-150">
+                <td class="px-4 lg:px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg <%= log.status === 'Online' ? 'bg-emerald-100 text-emerald-600' : '' %> <%= log.status === 'Offline' ? 'bg-rose-100 text-rose-600' : '' %> <%= log.status === 'Pending' ? 'bg-amber-100 text-amber-600' : '' %> flex items-center justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900"><%= new Date(log.timestamp).toLocaleDateString() %></p>
+                      <p class="text-xs text-gray-500"><%= new Date(log.timestamp).toLocaleTimeString() %></p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 lg:px-6 py-4">
+                  <p class="font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none"><%= log.monitor_name || 'Unknown' %></p>
+                </td>
+                <td class="px-4 lg:px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2 lg:px-3 py-1 rounded-full text-xs font-medium
+                    <%= log.status === 'Online' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' %>
+                    <%= log.status === 'Offline' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' %>
+                    <%= log.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' %>">
+                    <span class="w-1.5 h-1.5 rounded-full
+                      <%= log.status === 'Online' ? 'bg-emerald-500' : '' %>
+                      <%= log.status === 'Offline' ? 'bg-rose-500' : '' %>
+                      <%= log.status === 'Pending' ? 'bg-amber-500' : '' %>"></span>
+                    <%= log.status %>
+                  </span>
+                </td>
+                <td class="px-4 lg:px-6 py-4 hidden sm:table-cell">
+                  <p class="text-sm text-gray-600 max-w-md truncate"><%= log.message || '-' %></p>
+                </td>
+              </tr>
+              <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+
+        <% if (logs.length > 0) { %>
+        <div class="px-4 lg:px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+          <p class="text-xs text-gray-500 text-center">Showing <%= logs.length %> most recent events</p>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+      document.body.classList.toggle('overflow-hidden');
+    }
+  </script>
+</body>
+</html>

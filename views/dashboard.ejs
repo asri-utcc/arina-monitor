@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Dashboard - Arina Monitor</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+    *::-webkit-scrollbar { width: 6px; height: 6px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 3px; }
+    .sidebar-link.active { background: linear-gradient(90deg, rgba(59,130,246,0.15) 0%, transparent 100%); border-left-color: #3b82f6; }
+    .status-badge { transition: all 0.3s ease; }
+    .modal-backdrop { backdrop-filter: blur(4px); }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15); }
+    .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .btn-primary:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+    .pulse-online { animation: pulse-online 2s infinite; }
+    @keyframes pulse-online { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* Monitor toggle switch */
+    .monitor-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+    .monitor-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .monitor-toggle .toggle-track {
+      width: 44px; height: 24px; background: #e2e8f0; border-radius: 12px;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+    }
+    .monitor-toggle input:checked + .toggle-track { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 0 12px rgba(16,185,129,0.3); }
+    .monitor-toggle .toggle-knob {
+      position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+      background: white; border-radius: 50%; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .monitor-toggle input:checked + .toggle-track .toggle-knob { transform: translateX(20px); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .monitor-toggle .toggle-label { margin-left: 8px; font-size: 0.75rem; font-weight: 600; transition: color 0.3s ease; }
+    .monitor-toggle input:checked ~ .toggle-label { color: #059669; }
+    .monitor-toggle input:not(:checked) ~ .toggle-label { color: #94a3b8; }
+    .monitor-toggle.loading .toggle-track { opacity: 0.6; }
+    /* Paused card state */
+    .monitor-card-paused { opacity: 0.55; filter: grayscale(40%); }
+    .monitor-card-paused:hover { opacity: 0.8; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased flex flex-col lg:flex-row min-h-screen">
+  <!-- Mobile Top Bar -->
+  <header class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+    <button id="mobileMenuBtn" class="p-2 -ml-2 rounded-lg hover:bg-slate-800 transition-colors" onclick="toggleSidebar()">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        </svg>
+      </div>
+      <span class="font-semibold">Arina Monitor</span>
+    </div>
+    <div class="w-10"></div>
+  </header>
+
+  <!-- Mobile Sidebar Overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col transform -translate-x-full lg:translate-x-0 lg:block transition-transform duration-300 border-r border-slate-700">
+    <!-- Logo -->
+    <div class="p-5 border-b border-slate-700/50">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="font-semibold text-lg">Arina Monitor</h1>
+            <p class="text-xs text-slate-400">Heartbeat System</p>
+          </div>
+        </div>
+        <button class="hidden lg:block p-2 -mr-2 rounded-lg hover:bg-slate-800">
+          <!-- Spacer for alignment -->
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+      <a href="/" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+        </svg>
+        <span class="font-medium">Dashboard</span>
+      </a>
+      <a href="/history" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="font-medium">History</span>
+      </a>
+      <a href="/settings" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200 border-l-3 border-transparent">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+        <span class="font-medium">Settings</span>
+      </a>
+    </nav>
+
+    <!-- Status Indicator -->
+    <div class="p-4 border-t border-slate-700/50">
+      <div class="flex items-center gap-2 text-sm text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-online"></span>
+        <span>System Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex flex-col min-h-screen lg:min-h-screen">
+    <!-- Desktop Header -->
+    <header class="hidden lg:flex bg-white border-b border-gray-200 px-6 py-4 items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Dashboard</h2>
+        <p class="text-sm text-gray-500">Monitor your servers in real-time</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-right">
+          <p class="text-sm font-medium text-gray-900"><%= stats.total %> Monitors</p>
+          <p class="text-xs text-gray-500"><span class="text-emerald-500"><%= stats.online %> Online</span> · <span class="text-rose-500"><%= stats.offline %> Offline</span></p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-semibold">
+          A
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Stats Bar -->
+    <div class="lg:hidden px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between mt-14">
+      <div class="text-sm">
+        <span class="font-medium text-gray-900"><%= stats.total %> Monitors</span>
+        <span class="text-gray-500 ml-2"><span class="text-emerald-500"><%= stats.online %> Online</span> · <span class="text-rose-500"><%= stats.offline %> Offline</span></span>
+      </div>
+    </div>
+
+    <!-- Page Content -->
+    <div class="flex-1 overflow-auto p-4 lg:p-6">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 mb-6 fade-in">
+        <!-- Total Card -->
+        <div class="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100 card-hover transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 mb-1">Total</p>
+              <p class="text-2xl lg:text-3xl font-bold text-gray-900"><%= stats.total %></p>
+            </div>
+            <div class="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 flex items-center justify-center">
+              <svg class="w-6 h-6 lg:w-7 lg:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Online Card -->
+        <div class="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100 card-hover transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 mb-1">Online</p>
+              <p class="text-2xl lg:text-3xl font-bold text-emerald-600"><%= stats.online %></p>
+            </div>
+            <div class="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 flex items-center justify-center">
+              <svg class="w-6 h-6 lg:w-7 lg:h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Offline Card -->
+        <div class="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100 card-hover transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 mb-1">Offline</p>
+              <p class="text-2xl lg:text-3xl font-bold text-rose-600"><%= stats.offline %></p>
+            </div>
+            <div class="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-gradient-to-br from-rose-500/10 to-rose-600/10 flex items-center justify-center">
+              <svg class="w-6 h-6 lg:w-7 lg:h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monitor Cards Grid -->
+      <div class="fade-in" style="animation-delay: 100ms;">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Monitors</h3>
+            <p class="text-sm text-gray-500">Real-time status of all monitored endpoints</p>
+          </div>
+          <button onclick="openModal()" class="btn-primary px-4 py-2.5 rounded-xl text-white font-medium text-sm flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Monitor
+          </button>
+        </div>
+
+        <!-- Empty State -->
+        <% if (monitors.length === 0) { %>
+        <div class="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
+          <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+          </div>
+          <p class="text-gray-500 font-medium">No monitors configured</p>
+          <p class="text-gray-400 text-sm mt-1">Click "Add Monitor" to get started</p>
+        </div>
+        <% } else { %>
+
+        <!-- Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="monitorCards">
+          <% monitors.forEach(function(monitor) { %>
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 card-hover transition-all duration-300 relative <%= monitor.is_active ? '' : 'monitor-card-paused' %>" id="monitor-card-<%= monitor.id %>">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl <%= monitor.type === 'ping' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600' %> flex items-center justify-center font-semibold">
+                <%= monitor.type === 'ping' ? 'P' : 'A' %>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h4 class="font-semibold text-gray-900 truncate"><%= monitor.name %></h4>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= monitor.type === 'ping' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' %>">
+                  <%= monitor.type === 'ping' ? 'Ping' : 'API' %>
+                </span>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="flex items-center justify-between mb-3">
+              <span class="status-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+                <%= monitor.status === 'Online' && monitor.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' %>
+                <%= monitor.status === 'Offline' && monitor.is_active ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' %>
+                <%= monitor.status === 'Pending' && monitor.is_active ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' %>
+                <%= !monitor.is_active ? 'bg-gray-100 text-gray-500 border border-gray-200' : '' %>" id="status-badge-<%= monitor.id %>">
+                <span class="w-1.5 h-1.5 rounded-full
+                  <%= monitor.status === 'Online' && monitor.is_active ? 'bg-emerald-500 animate-pulse' : '' %>
+                  <%= monitor.status === 'Offline' && monitor.is_active ? 'bg-rose-500' : '' %>
+                  <%= monitor.status === 'Pending' && monitor.is_active ? 'bg-amber-500' : '' %>
+                  <%= !monitor.is_active ? 'bg-gray-400' : '' %>"></span>
+                <%= monitor.is_active ? monitor.status : 'Paused' %>
+              </span>
+              <!-- Toggle Switch -->
+              <label class="monitor-toggle" id="toggle-wrapper-<%= monitor.id %>" title="<%= monitor.is_active ? 'Stop monitoring' : 'Start monitoring' %>">
+                <input type="checkbox" id="toggle-<%= monitor.id %>" <%= monitor.is_active ? 'checked' : '' %> onchange="toggleMonitor(<%= monitor.id %>)">
+                <div class="toggle-track">
+                  <div class="toggle-knob"></div>
+                </div>
+                <span class="toggle-label"><%= monitor.is_active ? 'ON' : 'OFF' %></span>
+              </label>
+            </div>
+
+            <!-- URL -->
+            <div class="mb-3 min-w-0">
+              <p class="text-xs text-gray-500 truncate"><%= monitor.type === 'ping' ? monitor.target_url : 'API: ' + monitor.secret_token.substring(0, 8) + '...' %></p>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+              <div class="text-xs text-gray-400">
+                <span><%= formatRelativeTime(monitor.last_seen) %></span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button onclick="editMonitor(<%= monitor.id %>)" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-150" title="Edit">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                </button>
+                <button onclick="deleteMonitor(<%= monitor.id %>)" class="p-2 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-150" title="Delete">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="monitorModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 modal-backdrop" onclick="closeModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto transform transition-all duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto" id="modalContent">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">Add Monitor</h3>
+          <button onclick="closeModal()" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <form id="monitorForm" class="p-6 space-y-5">
+          <input type="hidden" id="monitorId" name="id">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Device Name</label>
+            <input type="text" id="monitorName" name="name" required placeholder="Production Server" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-gray-900 placeholder-gray-400">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Monitor Type</label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="relative">
+                <input type="radio" name="type" value="ping" class="peer sr-only" checked onchange="toggleTypeFields()">
+                <div class="px-4 py-3 rounded-xl border-2 border-gray-200 cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900 text-sm">Ping</p>
+                      <p class="text-xs text-gray-500">HTTP/HTTPS</p>
+                    </div>
+                  </div>
+                </div>
+              </label>
+              <label class="relative">
+                <input type="radio" name="type" value="api" class="peer sr-only" onchange="toggleTypeFields()">
+                <div class="px-4 py-3 rounded-xl border-2 border-gray-200 cursor-pointer peer-checked:border-purple-500 peer-checked:bg-purple-50 transition-all">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900 text-sm">API</p>
+                      <p class="text-xs text-gray-500">Heartbeat</p>
+                    </div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div id="pingFields" class="space-y-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Target URL</label>
+              <input type="url" id="targetUrl" name="target_url" placeholder="https://example.com" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-gray-900 placeholder-gray-400">
+            </div>
+          </div>
+          <div id="apiFields" class="space-y-5 hidden">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Secret Token</label>
+              <div class="relative">
+                <input type="text" id="secretToken" name="secret_token" readonly placeholder="Auto-generated on save" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span class="text-xs text-gray-400">Read-only</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Check Interval (seconds)</label>
+            <input type="number" id="intervalSeconds" name="interval_seconds" value="60" min="10" max="3600" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-gray-900">
+          </div>
+          <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">Notifications</label>
+            <div class="space-y-3">
+              <label class="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-sky-600" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                    </svg>
+                  </div>
+                  <span class="font-medium text-gray-900 text-sm">Telegram</span>
+                </div>
+                <div class="relative">
+                  <input type="checkbox" id="notifyTelegram" name="notify_telegram" class="sr-only peer">
+                  <div class="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
+                  <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform"></div>
+                </div>
+              </label>
+              <label class="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                  </div>
+                  <span class="font-medium text-gray-900 text-sm">Push Notification</span>
+                </div>
+                <div class="relative">
+                  <input type="checkbox" id="notifyPwa" name="notify_pwa" class="sr-only peer">
+                  <div class="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
+                  <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform"></div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="isActive" name="is_active" checked class="sr-only peer">
+              <div class="relative w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-emerald-500 transition-colors">
+                <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+              </div>
+              <span class="text-sm font-medium text-gray-700">Active</span>
+            </label>
+          </div>
+        </form>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+          <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-100 transition-all">Cancel</button>
+          <button type="submit" form="monitorForm" class="btn-primary px-5 py-2.5 rounded-xl text-white font-medium text-sm transition-all duration-200 hover:shadow-lg">Save Monitor</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+      document.body.classList.toggle('overflow-hidden');
+    }
+  </script>
+</body>
+</html>
